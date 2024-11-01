@@ -12,11 +12,12 @@
 
 void setCursorPosition(int x, int y);
 void mainUI(const char* username);
+void modifyUI(const char *username, int index);
 
 typedef struct {
     char studentId[20];
     char name[50];
-    int scores[3]; // 0: è¯­æ–‡, 1: æ•°å­¦, 2: è‹±è¯­
+    int scores[3]; // 0: ÓïÎÄ, 1: ÊıÑ§, 2: Ó¢Óï
 } StudentInfo;
 
 #define MAX_STUDENTS 100
@@ -48,7 +49,7 @@ int readStudentData(const char* username, StudentInfo students[], int maxStudent
 
 void renderDisplay(StudentInfo students[], int totalStudents, int offset) {
     setCursorPosition(0, 4);
-    printf("å­¦å·\t\t    å§“å\t\tè¯­æ–‡\t\t    æ•°å­¦\t\tè‹±è¯­\n");
+    printf("Ñ§ºÅ\t\t    ĞÕÃû\t\tÓïÎÄ\t\t    ÊıÑ§\t\tÓ¢Óï\n");
     for (int i = 0; i < DISPLAY_HEIGHT; i++) {
         int dataIndex = i + offset;
         if (dataIndex < totalStudents) {
@@ -62,16 +63,30 @@ void renderDisplay(StudentInfo students[], int totalStudents, int offset) {
         }
     }
 
-    int scrollbarPosition = (offset * (SCROLLBAR_HEIGHT - 1)) / (TOTAL_DATA_LINES - DISPLAY_HEIGHT);
-    for (int i = 0; i < SCROLLBAR_HEIGHT; i++) {
-        setCursorPosition(115, 4 + i);
-        if (i == scrollbarPosition) {
-            printf("  #\n"); // æ»‘å—ä½ç½®
-        } else {
-            printf("  |\n"); // æ»šåŠ¨æ¡è¾¹æ¡†
+    // ¼ì²éÊÇ·ñĞèÒª¹ö¶¯Ìõ
+    if (totalStudents > DISPLAY_HEIGHT) {
+        int scrollbarPosition =  (offset * (SCROLLBAR_HEIGHT - 1)) / (totalStudents - DISPLAY_HEIGHT);
+        for (int i = 0; i < SCROLLBAR_HEIGHT; i++) {
+            setCursorPosition(115, 4 + i);
+            if (i == scrollbarPosition) {
+                printf("  #\n"); // »¬¿éÎ»ÖÃ
+            } else {
+                printf("  |\n"); // ¹ö¶¯Ìõ±ß¿ò
+            }
+        }
+    } else {
+        // Èç¹û²»ĞèÒª¹ö¶¯Ìõ£¬ÏÔÊ¾Ò»¸ö¹Ì¶¨Î»ÖÃµÄ¹ö¶¯Ìõ»ò²»ÏÔÊ¾
+        for (int i = 0; i < SCROLLBAR_HEIGHT; i++) {
+            setCursorPosition(115, 4 + i);
+            if (i == 0) {
+                printf("  #\n"); // ¹Ì¶¨Î»ÖÃµÄ»¬¿é
+            } else {
+                printf("  |\n"); // ¹ö¶¯Ìõ±ß¿ò
+            }
         }
     }
 }
+
 
 #define SCORE_RANGES 11 // 0-9, 10-19, ..., 90-100
 
@@ -82,7 +97,7 @@ void countScores(StudentInfo students[], int totalStudents, int count[3][SCORE_R
         for (int j = 0; j < 3; j++) {
             int score = students[i].scores[j];
             if (score >= 0 && score <= 100) {
-                int range = score < 100 ? score / 10 : 10; // å°† 100 åˆ†å½’åˆ°æœ€åä¸€ä¸ªåŒºé—´
+                int range = score < 100 ? score / 10 : 10; // ½« 100 ·Ö¹éµ½×îºóÒ»¸öÇø¼ä
                 count[j][range]++;
             }
         }
@@ -93,26 +108,26 @@ void countScores(StudentInfo students[], int totalStudents, int count[3][SCORE_R
 
 void drawHistogram(int scoreCounts[SCORE_RANGES], const char* subject, int maxScoreCount) {
     setCursorPosition(22, 5);
-    printf("%s æˆç»©åˆ†å¸ƒï¼š\n", subject);
+    printf("%s ³É¼¨·Ö²¼£º\n", subject);
 
     for (int i = 0; i < SCORE_RANGES; i++) {
         setCursorPosition(22, 2 * i + 7);
         printf("                                                                                                    ");
         setCursorPosition(22, 2 * i + 7);
-        // æ˜¾ç¤ºåˆ†æ•°æ®µ
+        // ÏÔÊ¾·ÖÊı¶Î
         if (i < SCORE_RANGES - 1) {
             printf("%2d-%2d: ", i * 10, i * 10 + 9);
         } else {
             printf("  100: ");
         }
 
-        // è®¡ç®—æŸ±çŠ¶å›¾é•¿åº¦
+        // ¼ÆËãÖù×´Í¼³¤¶È
         int length = (scoreCounts[i] * MAX_HISTOGRAM_LENGTH) / maxScoreCount;
         if (length > MAX_HISTOGRAM_LENGTH) {
             length = MAX_HISTOGRAM_LENGTH;
         }
 
-        // ç»˜åˆ¶æŸ±çŠ¶å›¾
+        // »æÖÆÖù×´Í¼
         for (int j = 0; j < length; j++) {
             printf("\033[47;30m \033[0m");
         }
@@ -123,15 +138,15 @@ void drawHistogram(int scoreCounts[SCORE_RANGES], const char* subject, int maxSc
 
 
 
-//é”®é¼ è¡Œä¸ºæ£€æµ‹
+//¼üÊóĞĞÎª¼ì²â
 int keyboard(int *x, int *y, int *key, int *wheel) {
     HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
     DWORD fdwSaveOldMode, fdwMode;
     INPUT_RECORD irInBuf[128];
 
-    GetConsoleMode(hStdin, &fdwSaveOldMode); // ä¿å­˜åŸæ§åˆ¶å°æ¨¡å¼
+    GetConsoleMode(hStdin, &fdwSaveOldMode); // ±£´æÔ­¿ØÖÆÌ¨Ä£Ê½
 
-    // å¯ç”¨é¼ æ ‡å’Œé”®ç›˜è¾“å…¥
+    // ÆôÓÃÊó±êºÍ¼üÅÌÊäÈë
     fdwMode = ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT;
     SetConsoleMode(hStdin, fdwMode);
 
@@ -156,7 +171,7 @@ int keyboard(int *x, int *y, int *key, int *wheel) {
                             *key = ker.uChar.AsciiChar;
                             break;
                     }
-                    SetConsoleMode(hStdin, fdwSaveOldMode); // æ¢å¤åŸæ§åˆ¶å°æ¨¡å¼
+                    SetConsoleMode(hStdin, fdwSaveOldMode); // »Ö¸´Ô­¿ØÖÆÌ¨Ä£Ê½
                     return 0;
                 }
             } else if (irInBuf[i].EventType == MOUSE_EVENT) {
@@ -166,17 +181,17 @@ int keyboard(int *x, int *y, int *key, int *wheel) {
                     if (mer.dwButtonState == FROM_LEFT_1ST_BUTTON_PRESSED) {
                         *x = mer.dwMousePosition.X;
                         *y = mer.dwMousePosition.Y;
-                        SetConsoleMode(hStdin, fdwSaveOldMode); // æ¢å¤åŸæ§åˆ¶å°æ¨¡å¼
+                        SetConsoleMode(hStdin, fdwSaveOldMode); // »Ö¸´Ô­¿ØÖÆÌ¨Ä£Ê½
                         return 1;
                     }
                 } else if (mer.dwEventFlags == MOUSE_WHEELED) {
                     if (HIWORD(mer.dwButtonState) == 120) {
-                        *wheel = 0; // æ»šè½®å‘ä¸Šæ»šåŠ¨
-                        SetConsoleMode(hStdin, fdwSaveOldMode); // æ¢å¤åŸæ§åˆ¶å°æ¨¡å¼
+                        *wheel = 0; // ¹öÂÖÏòÉÏ¹ö¶¯
+                        SetConsoleMode(hStdin, fdwSaveOldMode); // »Ö¸´Ô­¿ØÖÆÌ¨Ä£Ê½
                         return 2;
                     } else if (HIWORD(mer.dwButtonState) == 65416) { // 65416 is 0xFF88 in hex
-                        *wheel = 1; // æ»šè½®å‘ä¸‹æ»šåŠ¨
-                        SetConsoleMode(hStdin, fdwSaveOldMode); // æ¢å¤åŸæ§åˆ¶å°æ¨¡å¼
+                        *wheel = 1; // ¹öÂÖÏòÏÂ¹ö¶¯
+                        SetConsoleMode(hStdin, fdwSaveOldMode); // »Ö¸´Ô­¿ØÖÆÌ¨Ä£Ê½
                         return 2;
                     }
                 }
@@ -185,7 +200,7 @@ int keyboard(int *x, int *y, int *key, int *wheel) {
     }
 }
 
-//å…‰æ ‡ç§»åŠ¨
+//¹â±êÒÆ¶¯
 void setCursorPosition(int x, int y) {
     HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
     COORD pos = {x, y};
@@ -195,9 +210,9 @@ void setCursorPosition(int x, int y) {
 
 int createDirectory(const char* name) {
     if (CreateDirectory(name, NULL) || GetLastError() == ERROR_ALREADY_EXISTS) {
-        return 1; // æˆåŠŸåˆ›å»ºæˆ–å·²å­˜åœ¨
+        return 1; // ³É¹¦´´½¨»òÒÑ´æÔÚ
     } else {
-        return 0; // åˆ›å»ºå¤±è´¥
+        return 0; // ´´½¨Ê§°Ü
     }
 }
 
@@ -351,29 +366,29 @@ void hashSHA256(const unsigned char* input, size_t length, unsigned char output[
 
 int writePasswordHashToFile(const char* directory, const char* password) {
     unsigned char hashedPassword[SHA256_DIGEST_LENGTH];
-    char filePath[260]; // è¶³å¤Ÿé•¿ä»¥å®¹çº³è·¯å¾„
+    char filePath[260]; // ×ã¹»³¤ÒÔÈİÄÉÂ·¾¶
 
-    // è®¡ç®—å¯†ç çš„å“ˆå¸Œå€¼
+    // ¼ÆËãÃÜÂëµÄ¹şÏ£Öµ
     hashSHA256((const unsigned char*)password, strlen(password), hashedPassword);
 
-    // æ„é€ æ–‡ä»¶è·¯å¾„
+    // ¹¹ÔìÎÄ¼şÂ·¾¶
     sprintf(filePath, "%s\\password.txt", directory);
 
-    // æ‰“å¼€æ–‡ä»¶ä»¥å†™å…¥æ¨¡å¼
+    // ´ò¿ªÎÄ¼şÒÔĞ´ÈëÄ£Ê½
     FILE* file = fopen(filePath, "w");
     if (file == NULL) {
         perror("fopen");
-        return 0; // æ–‡ä»¶æ‰“å¼€å¤±è´¥
+        return 0; // ÎÄ¼ş´ò¿ªÊ§°Ü
     }
 
-    // å°†å“ˆå¸Œå€¼å†™å…¥æ–‡ä»¶
+    // ½«¹şÏ£ÖµĞ´ÈëÎÄ¼ş
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
         fprintf(file, "%02x", hashedPassword[i]);
     }
 
-    // å…³é—­æ–‡ä»¶
+    // ¹Ø±ÕÎÄ¼ş
     fclose(file);
-    return 1; // æˆåŠŸå†™å…¥æ–‡ä»¶
+    return 1; // ³É¹¦Ğ´ÈëÎÄ¼ş
 }
 
 int getUsernames(char usernames[MAX_USERS][MAX_PATH]) {
@@ -403,10 +418,10 @@ int getUsernames(char usernames[MAX_USERS][MAX_PATH]) {
 int verifyUsername(const char* username, char usernames[MAX_USERS][MAX_PATH], int count) {
     for (int i = 0; i < count; i++) {
         if (strcmp(username, usernames[i]) == 0) {
-            return 1; // æ‰¾åˆ°åŒ¹é…çš„ç”¨æˆ·å
+            return 1; // ÕÒµ½Æ¥ÅäµÄÓÃ»§Ãû
         }
     }
-    return 0; // æ²¡æœ‰æ‰¾åˆ°åŒ¹é…çš„ç”¨æˆ·å
+    return 0; // Ã»ÓĞÕÒµ½Æ¥ÅäµÄÓÃ»§Ãû
 }
 
 int verifyPassword(const char* username, const char* inputPassword) {
@@ -426,12 +441,12 @@ int verifyPassword(const char* username, const char* inputPassword) {
     }
     fclose(file);
 
-    // å“ˆå¸Œåçš„å¯†ç 
+    // ¹şÏ£ºóµÄÃÜÂë
     unsigned char hashedPassword[SHA256_DIGEST_LENGTH];
     hashSHA256((const unsigned char*)inputPassword, strlen(inputPassword), hashedPassword);
 
-    // å°†å“ˆå¸Œå€¼è½¬æ¢ä¸ºåå…­è¿›åˆ¶å­—ç¬¦ä¸²
-    char inputHash[65]; // SHA-256 çš„å“ˆå¸Œå€¼é•¿åº¦ä¸º 64 å­—èŠ‚ï¼ŒåŠ ä¸Š null ç»“æŸç¬¦
+    // ½«¹şÏ£Öµ×ª»»ÎªÊ®Áù½øÖÆ×Ö·û´®
+    char inputHash[65]; // SHA-256 µÄ¹şÏ£Öµ³¤¶ÈÎª 64 ×Ö½Ú£¬¼ÓÉÏ null ½áÊø·û
     for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
         sprintf(&inputHash[i * 2], "%02x", hashedPassword[i]);
     }
@@ -441,46 +456,46 @@ int verifyPassword(const char* username, const char* inputPassword) {
 }
 
 
-//ç»˜åˆ¶UI
-//ç™»å½•ç•Œé¢
+//»æÖÆUI
+//µÇÂ¼½çÃæ
 void loginUI(const char* username, const char* password) {
     system("cls");
     setCursorPosition(52, 9);
-    printf("å­¦ç”Ÿä¿¡æ¯ç®¡ç†ç³»ç»Ÿ\n");
+    printf("Ñ§ÉúĞÅÏ¢¹ÜÀíÏµÍ³\n");
     setCursorPosition(41, 12);
-    printf("è´¦å·ï¼š[%-25s]", username);
+    printf("ÕËºÅ£º[%-25s]", username);
     setCursorPosition(41, 13);
-    printf("å¯†ç ï¼š[%-25s]", password);
+    printf("ÃÜÂë£º[%-25s]", password);
     setCursorPosition(50, 16);
     printf("\033[47;30m                    \033[0m");
     setCursorPosition(50, 17);
-    printf("\033[47;30m        ç™»å½•        \033[0m");
+    printf("\033[47;30m        µÇÂ¼        \033[0m");
     setCursorPosition(50, 18);
     printf("\033[47;30m                    \033[0m");
     setCursorPosition(80, 20);
-    printf("\033[47;30mæ³¨å†Œ\033[0m");
+    printf("\033[47;30m×¢²á\033[0m");
 }
 
-//æ³¨å†Œç•Œé¢
+//×¢²á½çÃæ
 void registerUI(const char* username, const char* password) {
     system("cls");
     setCursorPosition(52, 9);
-    printf("å­¦ç”Ÿä¿¡æ¯ç®¡ç†ç³»ç»Ÿ\n");
+    printf("Ñ§ÉúĞÅÏ¢¹ÜÀíÏµÍ³\n");
     setCursorPosition(41, 12);
-    printf("è´¦å·ï¼š[%-25s]", username);
+    printf("ÕËºÅ£º[%-25s]", username);
     setCursorPosition(41, 13);
-    printf("å¯†ç ï¼š[%-25s]", password);
+    printf("ÃÜÂë£º[%-25s]", password);
     setCursorPosition(50, 16);
     printf("\033[47;30m                    \033[0m");
     setCursorPosition(50, 17);
-    printf("\033[47;30m        æ³¨å†Œ        \033[0m");
+    printf("\033[47;30m        ×¢²á        \033[0m");
     setCursorPosition(50, 18);
     printf("\033[47;30m                    \033[0m");
     setCursorPosition(80, 20);
-    printf("\033[47;30mç™»å½•\033[0m");
+    printf("\033[47;30mµÇÂ¼\033[0m");
 }
 
-//æ±‡æ€»ç•Œé¢
+//»ã×Ü½çÃæ
 void summaryUI(const char* username) {
     system("cls");
     setCursorPosition(0, 0);
@@ -488,27 +503,27 @@ void summaryUI(const char* username) {
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     setCursorPosition(52, 1);
-    printf("\033[47;30må­¦ç”Ÿä¿¡æ¯ç®¡ç†ç³»ç»Ÿ\033[0m");
+    printf("\033[47;30mÑ§ÉúĞÅÏ¢¹ÜÀíÏµÍ³\033[0m");
     setCursorPosition(5, 10);
     printf("\033[47;30m        \033[0m");
     setCursorPosition(5, 11);
-    printf("\033[47;30m  è¯­æ–‡  \033[0m");
+    printf("\033[47;30m  ÓïÎÄ  \033[0m");
     setCursorPosition(5, 12);
     printf("\033[47;30m        \033[0m");
     setCursorPosition(5, 15);
     printf("\033[47;30m        \033[0m");
     setCursorPosition(5, 16);
-    printf("\033[47;30m  æ•°å­¦  \033[0m");
+    printf("\033[47;30m  ÊıÑ§  \033[0m");
     setCursorPosition(5, 17);
     printf("\033[47;30m        \033[0m");
     setCursorPosition(5, 20);
     printf("\033[47;30m        \033[0m");
     setCursorPosition(5, 21);
-    printf("\033[47;30m  è‹±è¯­  \033[0m");
+    printf("\033[47;30m  Ó¢Óï  \033[0m");
     setCursorPosition(5, 22);
     printf("\033[47;30m        \033[0m");
     setCursorPosition(2,1);
-    printf("è¿”å›");
+    printf("·µ»Ø");
 
 
     StudentInfo students[MAX_STUDENTS];
@@ -517,7 +532,7 @@ void summaryUI(const char* username) {
 
     countScores(students, totalStudents, scoreCounts);
 
-    const char* subjects[] = {"è¯­æ–‡", "æ•°å­¦", "è‹±è¯­"};
+    const char* subjects[] = {"ÓïÎÄ", "ÊıÑ§", "Ó¢Óï"};
 
     int maxScoreCount = 0;
 
@@ -538,16 +553,16 @@ void summaryUI(const char* username) {
         type = keyboard(&x, &y, &key, &wheel);
         if (type == 1) {
             if (x >= 5 && x <= 11 && y >= 10 && y <= 12) {
-                // è¯­æ–‡
+                // ÓïÎÄ
                 drawHistogram(scoreCounts[0], subjects[0], maxScoreCount);
             } else if (x >= 5 && x <= 11 && y >= 15 && y <= 17) {
-                // æ•°å­¦
+                // ÊıÑ§
                 drawHistogram(scoreCounts[1], subjects[1], maxScoreCount);
             } else if (x >= 5 && x <= 11 && y >= 20 && y <= 22) {
-                // è‹±è¯­
+                // Ó¢Óï
                 drawHistogram(scoreCounts[2], subjects[2], maxScoreCount);
             } else if (x >= 2 && x <= 6 && y == 1) {
-                // è¿”å›
+                // ·µ»Ø
                 break;
             }
         }
@@ -557,7 +572,7 @@ void summaryUI(const char* username) {
 
 void queryStudentScore(StudentInfo students[], int totalStudents, const char* studentId) {
     setCursorPosition(0, 6);
-    printf("å­¦å·\t\t    å§“å\t\tè¯­æ–‡\t\t    æ•°å­¦\t\tè‹±è¯­\n");
+    printf("Ñ§ºÅ\t\t    ĞÕÃû\t\tÓïÎÄ\t\t    ÊıÑ§\t\tÓ¢Óï\n");
     int found = 0;
     for (int i = 0; i < totalStudents; i++) {
         if (strcmp(students[i].studentId, studentId) == 0) {
@@ -571,10 +586,10 @@ void queryStudentScore(StudentInfo students[], int totalStudents, const char* st
         }
     }
     if (found == 0)
-        printf("æœªæ‰¾åˆ°å­¦å·ä¸º %s çš„å­¦ç”Ÿã€‚\n", studentId);
+        printf("Î´ÕÒµ½Ñ§ºÅÎª %s µÄÑ§Éú¡£\n", studentId);
 }
 
-//æŸ¥è¯¢ç•Œé¢
+//²éÑ¯½çÃæ
 void searchUI(const char* username, const char* studentId) {
     system("cls");
     setCursorPosition(0, 0);
@@ -582,17 +597,17 @@ void searchUI(const char* username, const char* studentId) {
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     setCursorPosition(52, 1);
-    printf("\033[47;30må­¦ç”Ÿä¿¡æ¯ç®¡ç†ç³»ç»Ÿ\033[0m");
+    printf("\033[47;30mÑ§ÉúĞÅÏ¢¹ÜÀíÏµÍ³\033[0m");
     setCursorPosition(4, 4);
-    printf("è¯·è¾“å…¥è¦æŸ¥è¯¢çš„å­¦ç”Ÿå­¦å·:[%-25s]", studentId);
+    printf("ÇëÊäÈëÒª²éÑ¯µÄÑ§ÉúÑ§ºÅ:[%-25s]", studentId);
     setCursorPosition(60, 4);
-    printf("\033[47;30mæŸ¥è¯¢\033[0m");
+    printf("\033[47;30m²éÑ¯\033[0m");
     setCursorPosition(2, 1);
-    printf("è¿”å›");
+    printf("·µ»Ø");
 
 }
 
-//è¿½åŠ å‡½æ•°
+//×·¼Óº¯Êı
 void appendStudentData(const char* username, const char* studentId, const char* name, const char* chinese, const char* math, const char* english) {
     char filePath[MAX_PATH];
     sprintf(filePath, "%s\\data", username);
@@ -607,35 +622,178 @@ void appendStudentData(const char* username, const char* studentId, const char* 
     fclose(file);
 }
 
-//æ–°å»ºç•Œé¢
+//ĞÂ½¨½çÃæ
 void createUI(const char *username, const char *studentId, const char *name, const char *chinese, const char *math, const char *english) {
     system("cls");
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     setCursorPosition(52, 1);
-    printf("\033[47;30må­¦ç”Ÿä¿¡æ¯ç®¡ç†ç³»ç»Ÿ\033[0m");
+    printf("\033[47;30mÑ§ÉúĞÅÏ¢¹ÜÀíÏµÍ³\033[0m");
     setCursorPosition(43, 9);
-    printf("å­¦å·ï¼š[%-20s]", studentId);
+    printf("Ñ§ºÅ£º[%-20s]", studentId);
     setCursorPosition(43, 11);
-    printf("å§“åï¼š[%-20s]", name);
+    printf("ĞÕÃû£º[%-20s]", name);
     setCursorPosition(43, 13);
-    printf("è¯­æ–‡ï¼š[%-20s]", chinese);
+    printf("ÓïÎÄ£º[%-20s]", chinese);
     setCursorPosition(43, 15);
-    printf("æ•°å­¦ï¼š[%-20s]", math);
+    printf("ÊıÑ§£º[%-20s]", math);
     setCursorPosition(43, 17);
-    printf("è‹±è¯­ï¼š[%-20s]", english);
+    printf("Ó¢Óï£º[%-20s]", english);
     setCursorPosition(50, 20);
     printf("\033[47;30m                    \033[0m");
     setCursorPosition(50, 21);
-    printf("\033[47;30m        æ–°å»º        \033[0m");
+    printf("\033[47;30m        ĞÂ½¨        \033[0m");
     setCursorPosition(50, 22);
     printf("\033[47;30m                    \033[0m");
     setCursorPosition(80, 24);
-    printf("\033[47;30må–æ¶ˆ\033[0m");
+    printf("\033[47;30mÈ¡Ïû\033[0m");
 }
 
-//åˆ é™¤å‡½æ•°
+
+//ĞŞ¸Ä½çÃæ
+void modifyUI(const char *username, int index) {
+    StudentInfo students[MAX_STUDENTS];
+    int totalStudents = readStudentData(username, students, MAX_STUDENTS);
+
+    char StudentId[20], Name[50], Chinese[10], Math[10], English[10];
+
+    // »ñÈ¡Ô­Ê¼Ñ§ÉúÊı¾İ
+    strcpy(StudentId, students[index].studentId);
+    strcpy(Name, students[index].name);
+    sprintf(Chinese, "%d", students[index].scores[0]);
+    sprintf(Math, "%d", students[index].scores[1]);
+    sprintf(English, "%d", students[index].scores[2]);
+    int inputMode = 0; // 0: Ñ§ºÅ, 1: ĞÕÃû, 2: ÓïÎÄ, 3: ÊıÑ§, 4: Ó¢Óï
+
+    UI:{
+        system("cls");
+        printf("\033[47;30m                                                                                                                        \n\033[0m");
+        printf("\033[47;30m                                                                                                                        \n\033[0m");
+        printf("\033[47;30m                                                                                                                        \n\033[0m");
+        setCursorPosition(52, 1);
+        printf("\033[47;30mÑ§ÉúĞÅÏ¢¹ÜÀíÏµÍ³\033[0m");
+        setCursorPosition(43, 9);
+        printf("Ñ§ºÅ£º[%-20s]", StudentId);
+        setCursorPosition(43, 11);
+        printf("ĞÕÃû£º[%-20s]", Name);
+        setCursorPosition(43, 13);
+        printf("ÓïÎÄ£º[%-20s]", Chinese);
+        setCursorPosition(43, 15);
+        printf("ÊıÑ§£º[%-20s]", Math);
+        setCursorPosition(43, 17);
+        printf("Ó¢Óï£º[%-20s]", English);
+        setCursorPosition(50, 20);
+        printf("\033[47;30m                    \033[0m");
+        setCursorPosition(50, 21);
+        printf("\033[47;30m        ĞŞ¸Ä        \033[0m");
+        setCursorPosition(50, 22);
+        printf("\033[47;30m                    \033[0m");
+        setCursorPosition(80, 24);
+        printf("\033[47;30mÈ¡Ïû\033[0m");
+
+        int x, y, key;
+        while (1) {
+            int type = keyboard(&x, &y, &key, NULL);
+            if (type == 1) {
+                if (x >= 43 && x <= 63 && y == 9) {
+                    setCursorPosition(50, 9);
+                    inputMode = 0; // ÇĞ»»ÊäÈëÄ£Ê½
+                } else if (x >= 43 && x <= 63 && y == 11) {
+                    setCursorPosition(50, 11);
+                    inputMode = 1; // ÇĞ»»ÊäÈëÄ£Ê½
+                } else if (x >= 43 && x <= 63 && y == 13) {
+                    setCursorPosition(50, 13);
+                    inputMode = 2; // ÇĞ»»ÊäÈëÄ£Ê½
+                } else if (x >= 43 && x <= 63 && y == 15) {
+                    setCursorPosition(50, 15);
+                    inputMode = 3; // ÇĞ»»ÊäÈëÄ£Ê½
+                } else if (x >= 43 && x <= 63 && y == 17) {
+                    setCursorPosition(50, 17);
+                    inputMode = 4; // ÇĞ»»ÊäÈëÄ£Ê½
+                } else if (x >= 50 && x <= 75 && y >= 20 && y <= 22) {
+                    // ±£´æ
+
+                    strcpy(students[index].studentId, StudentId);
+                    strcpy(students[index].name, Name);
+                    students[index].scores[0] = atoi(Chinese);
+                    students[index].scores[1] = atoi(Math);
+                    students[index].scores[2] = atoi(English);
+                    //¼ì²é¸÷ÏîÊÇ·ñÌîĞ´
+                    if (strlen(StudentId) == 0 || strlen(Name) == 0 || strlen(Chinese) == 0 || strlen(Math) == 0 || strlen(English) == 0) {
+                        MessageBox(NULL, "ÇëÌîĞ´ÍêÕûĞÅÏ¢£¡", "ÌáÊ¾", MB_OK);
+                        continue;
+                    }
+
+                    char filePath[MAX_PATH];
+                    sprintf(filePath, "%s\\data", username);
+                    FILE* file = fopen(filePath, "w");
+                    if (file == NULL) {
+                        perror("Unable to open file");
+                        return;
+                    }
+                    for (int i = 0; i < totalStudents; i++) {
+                        fprintf(file, "%s,%s,%d,%d,%d\n",
+                                students[i].studentId,
+                                students[i].name,
+                                students[i].scores[0],
+                                students[i].scores[1],
+                                students[i].scores[2]);
+                    }
+                    fclose(file);
+
+                    mainUI(username);
+                    return;
+                } else if (x >= 80 && x <= 84 && y == 24) {
+                    // È¡Ïû
+                    mainUI(username);
+                    return;
+                }
+                continue;
+            }if (key == '\b') { // Backspace¼ü
+                // É¾³ıÓÃ»§Ãû»òÃÜÂëÖĞµÄ×îºóÒ»¸ö×Ö·û
+                if (inputMode == 0 && strlen(StudentId) > 0) {
+                    StudentId[strlen(StudentId) - 1] = '\0';
+                } else if (inputMode == 1 && strlen(Name) > 0) {
+                    Name[strlen(Name) - 1] = '\0';
+                } else if (inputMode == 2 && strlen(Chinese) > 0) {
+                    Chinese[strlen(Chinese) - 1] = '\0';
+                } else if (inputMode == 3 && strlen(Math) > 0) {
+                    Math[strlen(Math) - 1] = '\0';
+                } else if (inputMode == 4 && strlen(English) > 0) {
+                    English[strlen(English) - 1] = '\0';
+                }
+            } else if (key >= ' ' && key <= '~') {
+                // ´¦Àí³£¹æ×Ö·ûÊäÈë
+                if (inputMode == 0 && strlen(StudentId) < INPUT_FIELD_WIDTH) {
+                    int len = strlen(StudentId);
+                    StudentId[len] = key;
+                    StudentId[len + 1] = '\0';
+                } else if (inputMode == 1 && strlen(Name) < INPUT_FIELD_WIDTH) {
+                    int len = strlen(Name);
+                    Name[len] = key;
+                    Name[len + 1] = '\0';
+                } else if (inputMode == 2 && strlen(Chinese) < INPUT_FIELD_WIDTH) {
+                    int len = strlen(Chinese);
+                    Chinese[len] = key;
+                    Chinese[len + 1] = '\0';
+                } else if (inputMode == 3 && strlen(Math) < INPUT_FIELD_WIDTH) {
+                    int len = strlen(Math);
+                    Math[len] = key;
+                    Math[len + 1] = '\0';
+                } else if (inputMode == 4 && strlen(English) < INPUT_FIELD_WIDTH) {
+                    int len = strlen(English);
+                    English[len] = key;
+                    English[len + 1] = '\0';
+                }
+            }
+            // ÖØĞÂÏÔÊ¾ UI À´·´Ó³¸üĞÂ
+            goto UI;
+        }
+    };
+}
+
+//É¾³ıº¯Êı
 void deleteStudentDataByLine(const char* username, int lineNumber) {
     char filePath[MAX_PATH];
     sprintf(filePath, "%s\\data", username);
@@ -644,16 +802,16 @@ void deleteStudentDataByLine(const char* username, int lineNumber) {
     int totalStudents = readStudentData(username, students, MAX_STUDENTS);
 
 
-    // æ•°ç»„ç´¢å¼•ä»0å¼€å§‹ï¼Œå› æ­¤éœ€è¦å‡1
+    // Êı×éË÷Òı´Ó0¿ªÊ¼£¬Òò´ËĞèÒª¼õ1
     lineNumber--;
 
-    // ç§»åŠ¨å‰©ä½™å…ƒç´ è¦†ç›–è¦åˆ é™¤çš„è¡Œ
+    // ÒÆ¶¯Ê£ÓàÔªËØ¸²¸ÇÒªÉ¾³ıµÄĞĞ
     for (int i = lineNumber; i < totalStudents - 1; i++) {
         students[i] = students[i + 1];
     }
-    totalStudents--; // å‡å°‘æ€»å­¦ç”Ÿæ•°
+    totalStudents--; // ¼õÉÙ×ÜÑ§ÉúÊı
 
-    // å°†æ›´æ–°åçš„æ•°æ®å†™å›æ–‡ä»¶
+    // ½«¸üĞÂºóµÄÊı¾İĞ´»ØÎÄ¼ş
     FILE* file = fopen(filePath, "w");
     if (file == NULL) {
         perror("Unable to open file");
@@ -672,30 +830,32 @@ void deleteStudentDataByLine(const char* username, int lineNumber) {
     fclose(file);
 }
 
-//ä¸»ç•Œé¢
+//Ö÷½çÃæ
 void mainUI(const char* username) {
+    StudentInfo students[MAX_STUDENTS];
+    int totalStudents = readStudentData(username, students, MAX_STUDENTS);
     system("cls");
     setCursorPosition(0, 0);
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     printf("\033[47;30m                                                                                                                        \n\033[0m");
     setCursorPosition(52, 1);
-    printf("\033[47;30må­¦ç”Ÿä¿¡æ¯ç®¡ç†ç³»ç»Ÿ\033[0m");
+    printf("\033[47;30mÑ§ÉúĞÅÏ¢¹ÜÀíÏµÍ³\033[0m");
+    setCursorPosition(2, 1);
+    printf("¹²ÓĞ%d¸öÑ§ÉúĞÅÏ¢", totalStudents);
     setCursorPosition(90, 1);
-    printf("æ±‡æ€»");
+    printf("»ã×Ü");
     setCursorPosition(98, 1);
-    printf("æŸ¥è¯¢");
+    printf("²éÑ¯");
     setCursorPosition(106, 1);
-    printf("æ–°å»º");
+    printf("ĞÂ½¨");
 
     setCursorPosition(0, 4);
-    StudentInfo students[MAX_STUDENTS];
-    int totalStudents = readStudentData(username, students, MAX_STUDENTS);
     int offset = 0;
 
     if (totalStudents == 0) {
         setCursorPosition(0, 6);
-        printf("æ²¡æœ‰å­¦ç”Ÿä¿¡æ¯!");
+        printf("Ã»ÓĞÑ§ÉúĞÅÏ¢!");
     }
 
     renderDisplay(students, totalStudents, offset);
@@ -705,14 +865,18 @@ void mainUI(const char* username) {
     if (totalStudents >= 12) {
         totalLines = 12;
         for (int i = 0; i < 12; i++) {
+            setCursorPosition(94, 6 + 2 * i);
+            printf("\033[47;30mĞŞ¸Ä\033[0m");
             setCursorPosition(102, 6 + 2 * i);
-            printf("\033[47;30måˆ é™¤\033[0m");
+            printf("\033[47;30mÉ¾³ı\033[0m");
         }
     } else if (totalStudents >= 0 && totalStudents < 12) {
         totalLines = totalStudents;
         for (int i = 0; i < totalStudents; i++) {
+            setCursorPosition(94, 6 + 2 * i);
+            printf("\033[47;30mĞŞ¸Ä\033[0m");
             setCursorPosition(102, 6 + 2 * i);
-            printf("\033[47;30måˆ é™¤\033[0m");
+            printf("\033[47;30mÉ¾³ı\033[0m");
         }
     }
 
@@ -730,36 +894,36 @@ void mainUI(const char* username) {
             }
         } else if (type == 1) {
             if (x >= 90 && x <= 94 && y == 1) {
-                //æ±‡æ€»
+                //»ã×Ü
                 summaryUI(username);
             } else if (x >= 98 && x <= 102 && y == 1) {
-                //æŸ¥è¯¢
+                //²éÑ¯
                 char studentId[INPUT_FIELD_WIDTH + 1] = {0};
                 searchUI(username, studentId);
                 while (1) {
                     type = keyboard(&x, &y, &key, NULL);
                     if (type == 1) {
                         if (x >= 60 && x <= 64 && y == 4) {
-                            // æŸ¥è¯¢
+                            // ²éÑ¯
                             StudentInfo students[MAX_STUDENTS];
                             int totalStudents = readStudentData(username, students, MAX_STUDENTS);
 
-                            // è°ƒç”¨æŸ¥è¯¢åŠŸèƒ½
+                            // µ÷ÓÃ²éÑ¯¹¦ÄÜ
                             queryStudentScore(students, totalStudents, studentId);
                         } else if (x >= 2 && x <= 6 && y == 1) {
-                            // è¿”å›
+                            // ·µ»Ø
                             mainUI(username);
                             return;
                         }
                         continue;
                     }
-                    if (key == '\b') { // Backspaceé”®
-                        // åˆ é™¤ç”¨æˆ·åæˆ–å¯†ç ä¸­çš„æœ€åä¸€ä¸ªå­—ç¬¦
+                    if (key == '\b') { // Backspace¼ü
+                        // É¾³ıÓÃ»§Ãû»òÃÜÂëÖĞµÄ×îºóÒ»¸ö×Ö·û
                         if (strlen(studentId) > 0) {
                             studentId[strlen(studentId) - 1] = '\0';
                         }
                     } else if (key >= ' ' && key <= '~') {
-                        // å¤„ç†å¸¸è§„å­—ç¬¦è¾“å…¥
+                        // ´¦Àí³£¹æ×Ö·ûÊäÈë
                         if (strlen(studentId) < INPUT_FIELD_WIDTH) {
                             int len = strlen(studentId);
                             studentId[len] = key;
@@ -769,8 +933,8 @@ void mainUI(const char* username) {
                     searchUI(username, studentId);
                 }
             } else if (x >= 106 && x <= 110 && y == 1) {
-                //æ–°å»º
-                int inputMode = 0; // 0: è¾“å…¥å­¦å·, 1: è¾“å…¥å§“å, 2: è¾“å…¥è¯­æ–‡æˆç»©, 3: è¾“å…¥æ•°å­¦æˆç»©, 4: è¾“å…¥è‹±è¯­æˆç»©
+                //ĞÂ½¨
+                int inputMode = 0; // 0: ÊäÈëÑ§ºÅ, 1: ÊäÈëĞÕÃû, 2: ÊäÈëÓïÎÄ³É¼¨, 3: ÊäÈëÊıÑ§³É¼¨, 4: ÊäÈëÓ¢Óï³É¼¨
 
                 char studentId[INPUT_FIELD_WIDTH + 1] = {0};
                 char name[INPUT_FIELD_WIDTH + 1] = {0};
@@ -783,38 +947,39 @@ void mainUI(const char* username) {
                     if (type == 1) {
                         if (x >= 43 && x <= 63 && y == 9) {
                             setCursorPosition(50, 9);
-                            inputMode = 0; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                            inputMode = 0; // ÇĞ»»ÊäÈëÄ£Ê½
                         } else if (x >= 43 && x <= 63 && y == 11) {
                             setCursorPosition(50, 11);
-                            inputMode = 1; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                            inputMode = 1; // ÇĞ»»ÊäÈëÄ£Ê½
                         } else if (x >= 43 && x <= 63 && y == 13) {
                             setCursorPosition(50, 13);
-                            inputMode = 2; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                            inputMode = 2; // ÇĞ»»ÊäÈëÄ£Ê½
                         } else if (x >= 43 && x <= 63 && y == 15) {
                             setCursorPosition(50, 15);
-                            inputMode = 3; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                            inputMode = 3; // ÇĞ»»ÊäÈëÄ£Ê½
                         } else if (x >= 43 && x <= 63 && y == 17) {
                             setCursorPosition(50, 17);
-                            inputMode = 4; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                            inputMode = 4; // ÇĞ»»ÊäÈëÄ£Ê½
                         } else if (x >= 50 && x <= 75 && y >= 20 && y <= 22) {
-                            // æ–°å»º
-                            //æ£€æŸ¥å„é¡¹æ˜¯å¦å¡«å†™
-                            if (strlen(studentId) == 0 || strlen(name) == 0 || strlen(score1) == 0 || strlen(score2) == 0 || strlen(score3) == 0) {
-                                MessageBox(NULL, "è¯·å¡«å†™å®Œæ•´ä¿¡æ¯ï¼", "æç¤º", MB_OK);
+                            // ĞÂ½¨
+                            //¼ì²é¸÷ÏîÊÇ·ñÌîĞ´
+                            if (strlen(studentId) == 0 || strlen(name) == 0 || strlen(score1) == 0 ||
+                                strlen(score2) == 0 || strlen(score3) == 0) {
+                                MessageBox(NULL, "ÇëÌîĞ´ÍêÕûĞÅÏ¢£¡", "ÌáÊ¾", MB_OK);
                                 continue;
                             }
                             appendStudentData(username, studentId, name, score1, score2, score3);
                             mainUI(username);
                             return;
                         } else if (x >= 80 && x <= 84 && y == 24) {
-                            // å–æ¶ˆ
+                            // È¡Ïû
                             mainUI(username);
                             return;
                         }
                         continue;
                     }
-                    if (key == '\b') { // Backspaceé”®
-                        // åˆ é™¤ç”¨æˆ·åæˆ–å¯†ç ä¸­çš„æœ€åä¸€ä¸ªå­—ç¬¦
+                    if (key == '\b') { // Backspace¼ü
+                        // É¾³ıÓÃ»§Ãû»òÃÜÂëÖĞµÄ×îºóÒ»¸ö×Ö·û
                         if (inputMode == 0 && strlen(studentId) > 0) {
                             studentId[strlen(studentId) - 1] = '\0';
                         } else if (inputMode == 1 && strlen(name) > 0) {
@@ -827,7 +992,7 @@ void mainUI(const char* username) {
                             score3[strlen(score3) - 1] = '\0';
                         }
                     } else if (key >= ' ' && key <= '~') {
-                        // å¤„ç†å¸¸è§„å­—ç¬¦è¾“å…¥
+                        // ´¦Àí³£¹æ×Ö·ûÊäÈë
                         if (inputMode == 0 && strlen(studentId) < INPUT_FIELD_WIDTH) {
                             int len = strlen(studentId);
                             studentId[len] = key;
@@ -852,18 +1017,23 @@ void mainUI(const char* username) {
                     }
                     createUI(username, studentId, name, score1, score2, score3);
                 }
+            } else if (x >= 94 && x <= 98 && !(y % 2) && y >= 6 && y <= 4 + 2 * totalLines) {
+                //ĞŞ¸Ä
+                int index = (y - 6) / 2 + offset;
+                modifyUI(username, index);
+                return;
             } else if (x >= 102 && x <= 106 && !(y % 2) && y >= 6 && y <= 4 + 2 * totalLines) {
-                //åˆ é™¤
+                //É¾³ı
                 int index = (y - 6) / 2 + offset + 1;
                 deleteStudentDataByLine(username, index);
                 mainUI(username);
                 return;
             }
         } else if (type == 2) {
-            if (wheel == 0 && offset > 0) { // æ»šè½®å‘ä¸Šæ»šåŠ¨
+            if (wheel == 0 && offset > 0) { // ¹öÂÖÏòÉÏ¹ö¶¯
                 offset--;
                 renderDisplay(students, totalStudents, offset);
-            } else if (wheel == 1 && offset < TOTAL_DATA_LINES - DISPLAY_HEIGHT) { // æ»šè½®å‘ä¸‹æ»šåŠ¨
+            } else if (wheel == 1 && offset < TOTAL_DATA_LINES - DISPLAY_HEIGHT) { // ¹öÂÖÏòÏÂ¹ö¶¯
                 offset++;
                 renderDisplay(students, totalStudents, offset);
             }
@@ -874,10 +1044,10 @@ void mainUI(const char* username) {
 int main () {
     int x, y, key;
 
-    //ç™»å½•
+    //µÇÂ¼
     char username[INPUT_FIELD_WIDTH + 1] = {0};
     char password[INPUT_FIELD_WIDTH + 1] = {0};
-    int inputMode = 0; // 0: è¾“å…¥ç”¨æˆ·å, 1: è¾“å…¥å¯†ç 
+    int inputMode = 0; // 0: ÊäÈëÓÃ»§Ãû, 1: ÊäÈëÃÜÂë
 
     signin:
 
@@ -886,15 +1056,15 @@ int main () {
     keyboard(&x, &y, &key, NULL);
     if (x >= 42 && x <= 73 && y == 12) {
         setCursorPosition(48, 12);
-        inputMode = 0; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+        inputMode = 0; // ÇĞ»»ÊäÈëÄ£Ê½
     } else if (x >= 42 && x <= 73 && y == 13) {
         setCursorPosition(48, 13);
-        inputMode = 1; // åˆ‡æ¢è¾“å…¥æ¨¡å¼}
+        inputMode = 1; // ÇĞ»»ÊäÈëÄ£Ê½}
     } else if (x >= 50 && x <= 75 && y >= 17 && y <= 19) {
-        //ç™»å½•
+        //µÇÂ¼
         goto login;
     } else if (x >= 80 && x <= 84 && y == 20) {
-        //æ³¨å†Œ
+        //×¢²á
         goto signup;
     }
 
@@ -903,28 +1073,28 @@ int main () {
         if (type == 1) {
             if (x >= 42 && x <= 73 && y == 12) {
                 setCursorPosition(48, 12);
-                inputMode = 0; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                inputMode = 0; // ÇĞ»»ÊäÈëÄ£Ê½
             } else if (x >= 42 && x <= 73 && y == 13) {
                 setCursorPosition(48, 13);
-                inputMode = 1; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                inputMode = 1; // ÇĞ»»ÊäÈëÄ£Ê½
             } else if (x >= 50 && x <= 75 && y >= 17 && y <= 19) {
-                //ç™»å½•
+                //µÇÂ¼
                 goto login;
             } else if (x >= 80 && x <= 84 && y == 20) {
-                //æ³¨å†Œ
+                //×¢²á
                 goto signup;
             }
             continue;
         }
-        if (key == '\b') { // Backspaceé”®
-            // åˆ é™¤ç”¨æˆ·åæˆ–å¯†ç ä¸­çš„æœ€åä¸€ä¸ªå­—ç¬¦
+        if (key == '\b') { // Backspace¼ü
+            // É¾³ıÓÃ»§Ãû»òÃÜÂëÖĞµÄ×îºóÒ»¸ö×Ö·û
             if (inputMode == 0 && strlen(username) > 0) {
                 username[strlen(username) - 1] = '\0';
             } else if (inputMode == 1 && strlen(password) > 0) {
                 password[strlen(password) - 1] = '\0';
             }
         } else if (key >= ' ' && key <= '~') {
-            // å¤„ç†å¸¸è§„å­—ç¬¦è¾“å…¥
+            // ´¦Àí³£¹æ×Ö·ûÊäÈë
             if (inputMode == 0 && strlen(username) < INPUT_FIELD_WIDTH) {
                 int len = strlen(username);
                 username[len] = key;
@@ -945,19 +1115,19 @@ int main () {
         keyboard(&x, &y, NULL, NULL);
         if (x >= 42 && x <= 73 && y == 12) {
             setCursorPosition(48, 12);
-            inputMode = 0; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+            inputMode = 0; // ÇĞ»»ÊäÈëÄ£Ê½
         } else if (x >= 42 && x <= 73 && y == 13) {
             setCursorPosition(48, 13);
-            inputMode = 1; // åˆ‡æ¢è¾“å…¥æ¨¡å¼}
+            inputMode = 1; // ÇĞ»»ÊäÈëÄ£Ê½}
         } else if (x >= 50 && x <= 75 && y >= 17 && y <= 19) {
-            //æ³¨å†Œ
-            //åˆ›å»ºæ–‡ä»¶å¤¹
+            //×¢²á
+            //´´½¨ÎÄ¼ş¼Ğ
             createDirectory(username);
 
-            //å°†ç”¨æˆ·è¾“å…¥çš„å¯†ç è¿›è¡Œå“ˆå¸Œåå­˜å…¥password.txt
+            //½«ÓÃ»§ÊäÈëµÄÃÜÂë½øĞĞ¹şÏ£ºó´æÈëpassword.txt
             writePasswordHashToFile(username, password);
 
-            //åˆ›å»ºdataæ–‡ä»¶
+            //´´½¨dataÎÄ¼ş
             char filePath[MAX_PATH];
             sprintf(filePath, "%s\\data", username);
             FILE* file = fopen(filePath, "w");
@@ -966,12 +1136,12 @@ int main () {
                 return 0;
             }
 
-            MessageBox(0, "æ³¨å†Œå®Œæˆï¼", "æç¤º", 0);
+            MessageBox(0, "×¢²áÍê³É£¡", "ÌáÊ¾", 0);
 
             goto signin;
 
         } else if (x >= 80 && x <= 84 && y == 20) {
-            //ç™»å½•
+            //µÇÂ¼
             goto signin;
         }
 
@@ -980,26 +1150,26 @@ int main () {
             if (type == 1) {
                 if (x >= 42 && x <= 73 && y == 12) {
                     setCursorPosition(48, 12);
-                    inputMode = 0; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                    inputMode = 0; // ÇĞ»»ÊäÈëÄ£Ê½
                 } else if (x >= 42 && x <= 73 && y == 13) {
                     setCursorPosition(48, 13);
-                    inputMode = 1; // åˆ‡æ¢è¾“å…¥æ¨¡å¼
+                    inputMode = 1; // ÇĞ»»ÊäÈëÄ£Ê½
                 } else if (x >= 50 && x <= 75 && y >= 17 && y <= 19) {
-                    //æ³¨å†Œ
+                    //×¢²á
 
-                    //åœ¨åŒç›®å½•ä¸‹åˆ›å»ºæ–‡ä»¶å¤¹
-                    //æ–‡ä»¶å¤¹åå³ä¸ºç”¨æˆ·å
-                    //æ–‡ä»¶å¤¹å†…password.txtå‚¨å­˜çš„æ˜¯å¯†ç çš„å“ˆå¸Œå€¼
-                    //å°†ç”¨æˆ·è¾“å…¥çš„å¯†ç è¿›è¡Œå“ˆå¸Œåå­˜å…¥password.txt
-                    //æ³¨å†ŒæˆåŠŸåè¿›å…¥ä¸»ç•Œé¢
+                    //ÔÚÍ¬Ä¿Â¼ÏÂ´´½¨ÎÄ¼ş¼Ğ
+                    //ÎÄ¼ş¼ĞÃû¼´ÎªÓÃ»§Ãû
+                    //ÎÄ¼ş¼ĞÄÚpassword.txt´¢´æµÄÊÇÃÜÂëµÄ¹şÏ£Öµ
+                    //½«ÓÃ»§ÊäÈëµÄÃÜÂë½øĞĞ¹şÏ£ºó´æÈëpassword.txt
+                    //×¢²á³É¹¦ºó½øÈëÖ÷½çÃæ
 
-                    //åˆ›å»ºæ–‡ä»¶å¤¹
+                    //´´½¨ÎÄ¼ş¼Ğ
                     createDirectory(username);
 
-                    //å°†ç”¨æˆ·è¾“å…¥çš„å¯†ç è¿›è¡Œå“ˆå¸Œåå­˜å…¥password.txt
+                    //½«ÓÃ»§ÊäÈëµÄÃÜÂë½øĞĞ¹şÏ£ºó´æÈëpassword.txt
                     writePasswordHashToFile(username, password);
 
-                    //åˆ›å»ºdataæ–‡ä»¶
+                    //´´½¨dataÎÄ¼ş
                     char filePath[MAX_PATH];
                     sprintf(filePath, "%s\\data", username);
                     FILE* file = fopen(filePath, "w");
@@ -1008,25 +1178,25 @@ int main () {
                         return 0;
                     }
 
-                    MessageBox(0, "æ³¨å†Œå®Œæˆï¼", "æç¤º", 0);
+                    MessageBox(0, "×¢²áÍê³É£¡", "ÌáÊ¾", 0);
 
                     goto signin;
 
                 } else if (x >= 80 && x <= 84 && y == 20) {
-                    //ç™»å½•
+                    //µÇÂ¼
                     goto signin;
                 }
                 continue;
             }
-            if (key == '\b') { // Backspaceé”®
-                // åˆ é™¤ç”¨æˆ·åæˆ–å¯†ç ä¸­çš„æœ€åä¸€ä¸ªå­—ç¬¦
+            if (key == '\b') { // Backspace¼ü
+                // É¾³ıÓÃ»§Ãû»òÃÜÂëÖĞµÄ×îºóÒ»¸ö×Ö·û
                 if (inputMode == 0 && strlen(username) > 0) {
                     username[strlen(username) - 1] = '\0';
                 } else if (inputMode == 1 && strlen(password) > 0) {
                     password[strlen(password) - 1] = '\0';
                 }
             } else if (key >= ' ' && key <= '~') {
-                // å¤„ç†å¸¸è§„å­—ç¬¦è¾“å…¥
+                // ´¦Àí³£¹æ×Ö·ûÊäÈë
                 if (inputMode == 0 && strlen(username) < INPUT_FIELD_WIDTH) {
                     int len = strlen(username);
                     username[len] = key;
@@ -1042,45 +1212,45 @@ int main () {
     }
 
     login: {
-        //ç™»å½•æ­¥éª¤
-        //åŒç›®å½•ä¸‹çš„æ–‡ä»¶å¤¹åå³ä¸ºç”¨æˆ·å
-        //æ–‡ä»¶å¤¹å†…password.txtå‚¨å­˜çš„æ˜¯å¯†ç çš„å“ˆå¸Œå€¼
-        //å°†ç”¨æˆ·è¾“å…¥çš„å¯†ç è¿›è¡Œå“ˆå¸Œåä¸password.txtä¸­çš„å†…å®¹è¿›è¡Œæ¯”å¯¹
-        //è‹¥ç›¸åŒåˆ™ç™»å½•æˆåŠŸï¼Œå¦åˆ™ç™»å½•å¤±è´¥
-        //ç™»å½•æˆåŠŸåè¿›å…¥ä¸»ç•Œé¢
-        //ç™»å½•å¤±è´¥åˆ™æ˜¾ç¤ºç™»å½•å¤±è´¥å¹¶è¿”å›ç™»å½•ç•Œé¢
+        //µÇÂ¼²½Öè
+        //Í¬Ä¿Â¼ÏÂµÄÎÄ¼ş¼ĞÃû¼´ÎªÓÃ»§Ãû
+        //ÎÄ¼ş¼ĞÄÚpassword.txt´¢´æµÄÊÇÃÜÂëµÄ¹şÏ£Öµ
+        //½«ÓÃ»§ÊäÈëµÄÃÜÂë½øĞĞ¹şÏ£ºóÓëpassword.txtÖĞµÄÄÚÈİ½øĞĞ±È¶Ô
+        //ÈôÏàÍ¬ÔòµÇÂ¼³É¹¦£¬·ñÔòµÇÂ¼Ê§°Ü
+        //µÇÂ¼³É¹¦ºó½øÈëÖ÷½çÃæ
+        //µÇÂ¼Ê§°ÜÔòÏÔÊ¾µÇÂ¼Ê§°Ü²¢·µ»ØµÇÂ¼½çÃæ
 
-        //è¯»å–åŒç›®å½•ä¸‹çš„æ–‡ä»¶å¤¹å
-        //å°†æ–‡ä»¶å¤¹åå­˜å…¥æ•°ç»„
-        //å°†æ•°ç»„ä¸­çš„å†…å®¹ä¸ç”¨æˆ·è¾“å…¥çš„ç”¨æˆ·åè¿›è¡Œæ¯”å¯¹
-        //è‹¥ç›¸åŒåˆ™è¿›å…¥ä¸‹ä¸€æ­¥ï¼Œå¦åˆ™è¿”å›ç™»å½•ç•Œé¢
+        //¶ÁÈ¡Í¬Ä¿Â¼ÏÂµÄÎÄ¼ş¼ĞÃû
+        //½«ÎÄ¼ş¼ĞÃû´æÈëÊı×é
+        //½«Êı×éÖĞµÄÄÚÈİÓëÓÃ»§ÊäÈëµÄÓÃ»§Ãû½øĞĞ±È¶Ô
+        //ÈôÏàÍ¬Ôò½øÈëÏÂÒ»²½£¬·ñÔò·µ»ØµÇÂ¼½çÃæ
 
         char usernames[MAX_USERS][MAX_PATH];
         int userCount = getUsernames(usernames);
         int usernameExists = verifyUsername(username, usernames, userCount);
 
         if (!usernameExists) {
-            MessageBox(0, "ç”¨æˆ·åä¸å­˜åœ¨ï¼", "é”™è¯¯", 0);
+            MessageBox(0, "ÓÃ»§Ãû²»´æÔÚ£¡", "´íÎó", 0);
             goto signin;
         }
 
         int passwordCorrect = verifyPassword(username, password);
         if (!passwordCorrect) {
-            MessageBox(0, "å¯†ç é”™è¯¯ï¼", "é”™è¯¯", 0);
+            MessageBox(0, "ÃÜÂë´íÎó£¡", "´íÎó", 0);
             goto signin;
         }
 
-        //ç™»å½•æˆåŠŸ
+        //µÇÂ¼³É¹¦
         mainUI(username);
 
-        //ä»dataæ–‡ä»¶ä¸­è¯»å–æ•°æ®
-        //æ•°æ®æ ¼å¼ä¸ºï¼šå­¦å·,å§“å,è¯­æ–‡æˆç»©,æ•°å­¦æˆç»©,è‹±è¯­æˆç»©
-        //æŸ¥è¯¢ï¼Œå³åˆ—å‡ºæ‰€æœ‰å†…å®¹
-        //å¦‚æœè¦å¢åŠ æ•°æ®ï¼Œç›´æ¥åœ¨dataæ–‡ä»¶æœ«å°¾æ·»åŠ 
-        //å¦‚æœè¦ä¿®æ”¹æ•°æ®ï¼Œä¿®æ”¹é‚£ä¸€è¡Œçš„å†…å®¹ï¼Œå®ç°æ–¹å¼ä¸ºè¦†å†™ä¸€æ•´è¡Œï¼ˆè§£é‡Šï¼šåœ¨ä¿®æ”¹ç•Œé¢ä¸­ï¼Œæ˜¯åˆ—å‡ºäº†æ‰€æœ‰çš„å†…å®¹ï¼Œç„¶åè®©ç”¨æˆ·é€‰æ‹©è¦ä¿®æ”¹çš„å†…å®¹ï¼Œç„¶åå†è®©ç”¨æˆ·è¾“å…¥æ–°çš„å†…å®¹ï¼Œç„¶åå†å°†æ‰€æœ‰å†…å®¹å†™å…¥æ–‡ä»¶ï¼Œæ‰€ä»¥å®é™…ä¸Šæ˜¯è¦†å†™äº†ä¸€æ•´è¡Œï¼‰
-        //å¦‚æœè¦åˆ é™¤æ•°æ®ï¼Œå°†é‚£ä¸€è¡Œçš„å†…å®¹æ¸…ç©ºï¼ŒåŒæ—¶åˆ é™¤å›è½¦ç¬¦
+        //´ÓdataÎÄ¼şÖĞ¶ÁÈ¡Êı¾İ
+        //Êı¾İ¸ñÊ½Îª£ºÑ§ºÅ,ĞÕÃû,ÓïÎÄ³É¼¨,ÊıÑ§³É¼¨,Ó¢Óï³É¼¨
+        //²éÑ¯£¬¼´ÁĞ³öËùÓĞÄÚÈİ
+        //Èç¹ûÒªÔö¼ÓÊı¾İ£¬Ö±½ÓÔÚdataÎÄ¼şÄ©Î²Ìí¼Ó
+        //Èç¹ûÒªĞŞ¸ÄÊı¾İ£¬ĞŞ¸ÄÄÇÒ»ĞĞµÄÄÚÈİ£¬ÊµÏÖ·½Ê½Îª¸²Ğ´Ò»ÕûĞĞ£¨½âÊÍ£ºÔÚĞŞ¸Ä½çÃæÖĞ£¬ÊÇÁĞ³öÁËËùÓĞµÄÄÚÈİ£¬È»ºóÈÃÓÃ»§Ñ¡ÔñÒªĞŞ¸ÄµÄÄÚÈİ£¬È»ºóÔÙÈÃÓÃ»§ÊäÈëĞÂµÄÄÚÈİ£¬È»ºóÔÙ½«ËùÓĞÄÚÈİĞ´ÈëÎÄ¼ş£¬ËùÒÔÊµ¼ÊÉÏÊÇ¸²Ğ´ÁËÒ»ÕûĞĞ£©
+        //Èç¹ûÒªÉ¾³ıÊı¾İ£¬½«ÄÇÒ»ĞĞµÄÄÚÈİÇå¿Õ£¬Í¬Ê±É¾³ı»Ø³µ·û
 
-        //åœ¨mainUIä¸­å·²ç»å®ç°
+        //ÔÚmainUIÖĞÒÑ¾­ÊµÏÖ
 
         return 0;
     }
